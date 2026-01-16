@@ -97,14 +97,62 @@ export const authAPI = {
   login: async (email, password) => {
     await delay(MOCK_DELAY);
     
+    // Reload mockUsers in case they were updated in localStorage
+    mockUsers = getStorageData('users', mockUsers);
+    mockItems = getStorageData('items', mockItems);
+    mockNotifications = getStorageData('notifications', mockNotifications);
+    
     const user = mockUsers.find(u => u.email === email && u.password === password);
     
     if (user) {
-      const { password, ...userWithoutPassword } = user;
-      localStorage.setItem('currentUser', JSON.stringify({ ...userWithoutPassword, id: user.id }));
+      const { password: pwd, ...userWithoutPassword } = user;
+      const userData = { ...userWithoutPassword, id: user.id };
+      
+      // Generate notifications for returning users (not brand new)
+      // Add item-report notifications from other users' items
+      const otherUsersItems = mockItems.filter(item => item.userId !== user.id && item.status === 'active');
+      
+      otherUsersItems.forEach(item => {
+        // Check if notification for this item already exists for this user
+        const notificationExists = mockNotifications.some(
+          n => n.userId === user.id && n.relatedItemId === item.id && n.type === 'item-report'
+        );
+        
+        if (!notificationExists) {
+          const itemType = item.type === 'lost' ? 'Lost' : 'Found';
+          mockNotifications.push({
+            id: String(mockNotifications.length + 1),
+            userId: user.id,
+            type: 'item-report',
+            relatedItemId: item.id,
+            title: `${itemType} Item: ${item.itemName}`,
+            message: item.description,
+            location: item.location,
+            date: item.date,
+            category: item.category,
+            contactInfo: item.contactInfo,
+            image: item.image || null,
+            itemType: item.type,
+            read: false,
+            createdAt: item.createdAt,
+          });
+        }
+      });
+      
+      saveMockData();
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', 'mock-jwt-token-' + user.id);
+        localStorage.setItem('currentUser', JSON.stringify(userData));
+      } catch (e) {
+        console.error('Error saving to localStorage:', e);
+      }
+      
       return {
         success: true,
-        user: userWithoutPassword,
+        user: userData,
         token: 'mock-jwt-token-' + user.id,
       };
     }
@@ -157,14 +205,23 @@ export const authAPI = {
     });
     
     // Initialize user stats
-    localStorage.setItem(`userStats_${newUser.id}`, JSON.stringify({
-      isInitialized: true,
-      lostItems: 0,
-      foundItems: 0,
-      createdAt: new Date().toISOString(),
-    }));
-    
-    localStorage.setItem('currentUser', JSON.stringify({ ...newUser, id: newUser.id }));
+    try {
+      localStorage.setItem(`userStats_${newUser.id}`, JSON.stringify({
+        isInitialized: true,
+        lostItems: 0,
+        foundItems: 0,
+        createdAt: new Date().toISOString(),
+      }));
+      
+      const userData = { ...newUser };
+      delete userData.password;
+      
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', 'mock-jwt-token-' + newUser.id);
+      localStorage.setItem('currentUser', JSON.stringify({ ...userData, id: newUser.id }));
+    } catch (e) {
+      console.error('Error saving to localStorage:', e);
+    }
     
     saveMockData();
     

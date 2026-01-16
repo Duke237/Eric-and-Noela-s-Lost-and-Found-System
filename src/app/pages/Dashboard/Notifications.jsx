@@ -45,6 +45,7 @@ export default function Notifications() {
 
   const getIconForType = (type) => {
     switch (type) {
+      case 'item-report':
       case 'lost':
         return <AlertCircle className="w-5 h-5 text-red-600" />;
       case 'found':
@@ -53,9 +54,18 @@ export default function Notifications() {
         return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'message':
         return <MessageSquare className="w-5 h-5 text-blue-600" />;
+      case 'location-risk':
+        return <AlertCircle className="w-5 h-5 text-orange-600" />;
       default:
         return <Bell className="w-5 h-5 text-purple-600" />;
     }
+  };
+
+  const getTypeColor = (type) => {
+    if (type === 'item-report' || type === 'lost') return 'red';
+    if (type === 'found') return 'green';
+    if (type === 'location-risk') return 'orange';
+    return 'blue';
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -114,7 +124,14 @@ export default function Notifications() {
         </motion.div>
       ) : (
         <div className="space-y-3 sm:space-y-4">
-          {notifications.map((notification, index) => (
+          {notifications.map((notification, index) => {
+            const typeColor = getTypeColor(notification.type);
+            const bgColor = `${typeColor}-50`;
+            const borderColor = `border-${typeColor}-500`;
+            const textColor = `text-${typeColor}-600`;
+            const bgHover = `hover:bg-${typeColor}-100`;
+            
+            return (
             <motion.div
               key={notification.id}
               initial={{ opacity: 0, x: -20 }}
@@ -122,13 +139,11 @@ export default function Notifications() {
               transition={{ delay: index * 0.05 }}
               whileHover={{ x: 5 }}
               className={`bg-white p-4 sm:p-6 rounded-xl shadow-sm border-l-4 ${
-                notification.read ? 'border-gray-300' : (notification.type === 'lost' ? 'border-red-500' : 'border-green-500')
-              } ${!notification.read ? (notification.type === 'lost' ? 'bg-red-50' : 'bg-green-50') : ''}`}
+                notification.read ? 'border-gray-300' : borderColor
+              } ${!notification.read ? `bg-${bgColor}` : ''}`}
             >
               <div className="flex items-start gap-3 sm:gap-4">
-                <div className={`p-2 sm:p-3 rounded-lg flex-shrink-0 ${
-                  notification.type === 'lost' ? 'bg-red-100' : 'bg-green-100'
-                }`}>
+                <div className={`p-2 sm:p-3 rounded-lg flex-shrink-0 bg-${typeColor}-100`}>
                   {getIconForType(notification.type)}
                 </div>
 
@@ -136,22 +151,20 @@ export default function Notifications() {
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 mb-2">
                     <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{notification.title}</h3>
                     {!notification.read && (
-                      <span className={`px-2 py-1 text-white text-xs font-semibold rounded-full flex-shrink-0 w-fit ${
-                        notification.type === 'lost' ? 'bg-red-600' : 'bg-green-600'
-                      }`}>
+                      <span className={`px-2 py-1 text-white text-xs font-semibold rounded-full flex-shrink-0 w-fit bg-${typeColor}-600`}>
                         NEW
                       </span>
                     )}
                   </div>
 
-                  {/* Item Details Section */}
-                  {notification.itemName && (
+                  {/* Item Details Section for item-report notifications */}
+                  {notification.type === 'item-report' && (
                     <div className="bg-gray-50 p-3 sm:p-4 rounded-lg mb-3 space-y-2">
-                      {notification.itemImage && (
+                      {notification.image && (
                         <div className="mb-3">
                           <img
-                            src={notification.itemImage}
-                            alt={notification.itemName}
+                            src={notification.image}
+                            alt={notification.title}
                             className="w-full h-32 sm:h-40 object-cover rounded-lg"
                           />
                         </div>
@@ -159,15 +172,19 @@ export default function Notifications() {
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex items-center gap-2 min-w-0">
                           <Tag className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                          <span className="text-gray-700 truncate"><strong>Item:</strong> {notification.itemName}</span>
+                          <span className="text-gray-700 truncate"><strong>Category:</strong> {notification.category}</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <Calendar className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                          <span className="text-gray-700">{notification.itemDate}</span>
+                          <span className="text-gray-700 truncate"><strong>Date:</strong> {notification.date}</span>
                         </div>
                         <div className="flex items-center gap-2 min-w-0">
                           <MapPin className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                          <span className="text-gray-700 truncate">{notification.itemLocation}</span>
+                          <span className="text-gray-700 truncate"><strong>Location:</strong> {notification.location}</span>
+                        </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                          <span className="text-gray-700 truncate"><strong>Contact:</strong> {notification.contactInfo}</span>
                         </div>
                       </div>
                     </div>
@@ -182,11 +199,7 @@ export default function Notifications() {
                       {!notification.read && (
                         <button
                           onClick={() => markAsRead(notification.id)}
-                          className={`flex-1 sm:flex-none px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-lg transition-colors ${
-                            notification.type === 'lost' 
-                              ? 'text-red-600 hover:bg-red-100' 
-                              : 'text-green-600 hover:bg-green-100'
-                          }`}
+                          className={`flex-1 sm:flex-none px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-lg transition-colors ${textColor} hover:bg-${typeColor}-100`}
                         >
                           Mark read
                         </button>
@@ -202,7 +215,8 @@ export default function Notifications() {
                 </div>
               </div>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
