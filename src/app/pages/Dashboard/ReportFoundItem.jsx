@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle, MapPin, Calendar, FileText, Tag, Mail, AlertCircle, Image } from 'lucide-react';
-import { itemsAPI } from '@/services/api';
-
+import { itemsAPI } from '@/services/api';import { notificationService } from '@/services/notificationService';
 export default function ReportFoundItem() {
   const [formData, setFormData] = useState({
     itemName: '',
@@ -131,6 +130,17 @@ export default function ReportFoundItem() {
           
           if (data.success) {
             console.log('✅ Item reported successfully! Notifications sent to:', data.notificationsSent);
+            
+            // Immediately fetch notifications to update the UI
+            console.log('🔄 Fetching notifications immediately...');
+            setTimeout(async () => {
+              const notifData = await notificationService.fetchUnread();
+              if (notifData.success) {
+                console.log(`📬 Fetched ${notifData.count} unread notifications`);
+                notificationService.notifySubscribers(notifData.notifications || []);
+              }
+            }, 500);
+            
             setSubmitted(true);
             setFormData({
               itemName: '',

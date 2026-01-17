@@ -22,20 +22,26 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }) {
 
     // Subscribe to real-time notification updates
     const unsubscribe = notificationService.subscribe((newNotifications) => {
+      console.log('🔔 Sidebar: New notifications arrived:', newNotifications.length);
       setUnreadCount(prev => prev + newNotifications.length);
     });
 
-    // Listen to unread count changes from notification service
+    // Listen to unread count changes from notification service (every 1 second)
     const checkUnread = setInterval(() => {
       const count = notificationService.getUnreadCount();
       if (count > 0) {
+        console.log(`🔔 Sidebar: Updated unread count to ${count}`);
         setUnreadCount(count);
       }
     }, 1000);
 
+    // Start polling (1 second for aggressive real-time updates)
+    notificationService.startPolling(1000);
+
     return () => {
       unsubscribe();
       clearInterval(checkUnread);
+      notificationService.stopPolling();
     };
   }, []);
 

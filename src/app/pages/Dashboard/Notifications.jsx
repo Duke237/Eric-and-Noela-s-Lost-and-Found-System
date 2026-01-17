@@ -15,7 +15,7 @@ export default function Notifications() {
 
     // Subscribe to real-time notification updates
     const unsubscribe = notificationService.subscribe((newNotifications) => {
-      console.log('Received real-time notifications:', newNotifications);
+      console.log('🔔 Received real-time notifications:', newNotifications);
       // Add new notifications to the top
       setNotifications(prev => {
         const updatedNotifications = [...newNotifications, ...prev];
@@ -28,12 +28,13 @@ export default function Notifications() {
             return acc;
           }
         }, []);
+        console.log('Updated notifications:', uniqueNotifications.length);
         return uniqueNotifications;
       });
     });
 
-    // Start polling for new notifications every 5 seconds
-    notificationService.startPolling(5000);
+    // Start polling for new notifications every 1 second (aggressive polling for real-time feel)
+    notificationService.startPolling(1000);
 
     // Cleanup
     return () => {
