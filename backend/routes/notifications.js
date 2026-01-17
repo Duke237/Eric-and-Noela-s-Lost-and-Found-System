@@ -5,9 +5,9 @@ exports.getAll = async (req, res) => {
     const userId = req.userId;
     const connection = await pool.getConnection();
 
-    // Get user's registration date to ensure we only show notifications from after they joined
+    // Verify user exists
     const [users] = await connection.query(
-      'SELECT registered_at FROM users WHERE id = ?',
+      'SELECT id FROM users WHERE id = ?',
       [userId]
     );
 
@@ -16,14 +16,12 @@ exports.getAll = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const userRegisteredAt = users[0].registered_at;
-
-    // Get notifications created after user registration, ordered by most recent first
+    // Get all notifications for this user, ordered by most recent first
     const [notifications] = await connection.query(
       `SELECT * FROM notifications 
-       WHERE user_id = ? AND created_at >= ? 
+       WHERE user_id = ? 
        ORDER BY created_at DESC LIMIT 50`,
-      [userId, userRegisteredAt]
+      [userId]
     );
     
     await connection.release();
@@ -48,9 +46,9 @@ exports.getUnread = async (req, res) => {
     const userId = req.userId;
     const connection = await pool.getConnection();
 
-    // Get user's registration date
+    // Verify user exists
     const [users] = await connection.query(
-      'SELECT registered_at FROM users WHERE id = ?',
+      'SELECT id FROM users WHERE id = ?',
       [userId]
     );
 
@@ -59,14 +57,12 @@ exports.getUnread = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const userRegisteredAt = users[0].registered_at;
-
-    // Get unread notifications
+    // Get all unread notifications for this user
     const [notifications] = await connection.query(
       `SELECT * FROM notifications 
-       WHERE user_id = ? AND read_status = FALSE AND created_at >= ?
+       WHERE user_id = ? AND read_status = FALSE
        ORDER BY created_at DESC`,
-      [userId, userRegisteredAt]
+      [userId]
     );
     
     await connection.release();

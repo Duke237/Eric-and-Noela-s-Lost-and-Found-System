@@ -49,12 +49,9 @@ exports.create = async (req, res) => {
       [userId]
     );
 
-    // Broadcast notification to all users registered BEFORE this item was created
-    // This ensures only existing users get notified, not future registrants
-    const now = new Date();
+    // Broadcast notification to ALL users in the database
     const [allUsers] = await connection.query(
-      'SELECT id FROM users WHERE registered_at < ?',
-      [now]
+      'SELECT id FROM users'
     );
     
     const notificationMessage = `A ${type === 'lost' ? '🔍 Lost' : '✅ Found'} item has been reported: ${itemName} at ${location}`;
