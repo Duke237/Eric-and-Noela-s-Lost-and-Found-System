@@ -77,6 +77,7 @@ export default function ReportLostItem() {
     }
 
     setIsSubmitting(true);
+    
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const token = localStorage.getItem('token');
@@ -85,40 +86,63 @@ export default function ReportLostItem() {
       if (token) {
         try {
           const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+          
+          // Prepare JSON payload with image as base64
+          const payload = {
+            itemName: formData.itemName,
+            category: formData.category,
+            description: formData.description,
+            location: formData.location,
+            date: formData.date,
+            contactInfo: formData.contactInfo,
+            type: 'lost',
+            userId: user.id || '1',
+          };
+
+          // Handle image
+          if (formData.image) {
+            if (formData.image instanceof File) {
+              // Convert File to base64
+              const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(formData.image);
+              });
+              payload.image = base64;
+            } else if (typeof formData.image === 'string') {
+              payload.image = formData.image;
+            }
+          }
+
           const response = await fetch(`${apiUrl}/items`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              ...formData,
-              type: 'lost',
-              userId: user.id || '1',
-              image: formData.image, // Send as string/base64
-            }),
+            body: JSON.stringify(payload),
           });
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              setSubmitted(true);
-              setFormData({
-                itemName: '',
-                category: '',
-                description: '',
-                location: '',
-                date: '',
-                contactInfo: '',
-                image: null,
-              });
-              setImagePreview(null);
-              setIsSubmitting(false);
-              return;
-            }
+          const data = await response.json();
+          
+          if (data.success) {
+            setSubmitted(true);
+            setFormData({
+              itemName: '',
+              category: '',
+              description: '',
+              location: '',
+              date: '',
+              contactInfo: '',
+              image: null,
+            });
+            setImagePreview(null);
+            setIsSubmitting(false);
+            return;
           }
         } catch (apiError) {
-          console.log('Real API not available, falling back to mock:', apiError);
+          console.log('Real API error, falling back to mock:', apiError);
         }
       }
 
@@ -141,10 +165,12 @@ export default function ReportLostItem() {
           image: null,
         });
         setImagePreview(null);
+      } else {
+        setErrors({ submit: 'Failed to submit form. Please try again.' });
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      setErrors({ submit: 'Failed to submit form. Please try again.' });
+      setErrors({ submit: 'Error: ' + (error.message || 'Unknown error') });
     } finally {
       setIsSubmitting(false);
     }
