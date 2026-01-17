@@ -51,31 +51,28 @@ export default function App() {
   const DashboardLayout = ({ children }) => (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar isLoggedIn={true} onLogout={handleLogout} />
-      <div className="flex flex-1 pt-16 w-full">
-        {/* Sidebar - hidden on mobile/tablet, visible on desktop md and above */}
-        <div className="hidden md:block md:w-auto md:flex-shrink-0">
-          <Sidebar 
-            isCollapsed={sidebarCollapsed} 
-            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} 
-          />
-        </div>
+      <div className="flex flex-1 pt-16 w-full overflow-hidden">
+        {/* Sidebar - hidden on mobile, visible on desktop */}
+        <Sidebar 
+          isCollapsed={sidebarCollapsed} 
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} 
+        />
         
-        {/* Main Content - responsive margins */}
-        <main 
-          className="flex-1 w-full md:w-0 transition-all duration-300"
-          style={{ marginLeft: `${sidebarCollapsed ? 80 : 280}px` }}
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="min-h-[calc(100vh-4rem)] w-full"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+        {/* Main Content - flexes to fill available space */}
+        <main className="flex-1 w-full overflow-auto">
+          <div className="h-full w-full">
+            <AnimatePresence mode="wait">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="min-h-full w-full"
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </main>
       </div>
     </div>

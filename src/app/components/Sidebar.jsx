@@ -87,14 +87,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }) {
       initial={{ x: -300 }}
       animate={{ x: 0, width: isCollapsed ? '80px' : '280px' }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="fixed left-0 top-16 bottom-0 bg-white border-r border-gray-200 shadow-sm z-40 h-[calc(100vh-4rem)]"
+      className="hidden md:flex md:flex-col h-[calc(100vh-4rem)] bg-white border-r border-gray-200 shadow-sm flex-shrink-0 overflow-y-auto"
       style={{ 
         width: isCollapsed ? '80px' : '280px',
-        position: 'fixed',
-        top: '4rem',
-        left: 0,
-        height: 'calc(100vh - 4rem)',
-        overflowY: 'auto'
       }}
     >
       <div className="flex flex-col h-full">
@@ -136,7 +131,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }) {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: index * 0.05 }}
-                    className={`p-2 rounded-lg transition-all ${
+                    className={`p-2 rounded-lg transition-all flex-shrink-0 ${
                       isActive ? 'bg-white/20 text-white' : colorClasses[item.color]
                     }`}
                   >
@@ -148,11 +143,11 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }) {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.1 }}
-                      className="flex-1 flex items-center justify-between"
+                      className="flex-1 flex items-center justify-between min-w-0"
                     >
-                      <span className="font-medium">{item.label}</span>
+                      <span className="font-medium truncate">{item.label}</span>
                       {item.badge && !isActive && (
-                        <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                        <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full flex-shrink-0 ml-2">
                           {item.badge}
                         </span>
                       )}
@@ -174,7 +169,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="p-4 border-t border-gray-200"
+            className="p-4 border-t border-gray-200 flex-shrink-0"
           >
             <div className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg">
               <h4 className="font-semibold text-gray-900 mb-1">Need Help?</h4>

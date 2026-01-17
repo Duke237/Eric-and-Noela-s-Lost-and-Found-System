@@ -28,19 +28,20 @@ export default function Navbar({ isLoggedIn = false, onLogout }) {
 
   const dashboardNavItems = [
     {
-      label: 'Dashboard Home',
+      label: 'Dashboard',
       icon: LayoutDashboard,
       path: '/dashboard',
       color: 'blue',
+      shortLabel: 'Home',
     },
     {
-      label: 'Report Lost Item',
+      label: 'Report Lost',
       icon: AlertCircle,
       path: '/dashboard/report-lost',
       color: 'red',
     },
     {
-      label: 'Report Found Item',
+      label: 'Report Found',
       icon: CheckCircle,
       path: '/dashboard/report-found',
       color: 'green',
@@ -150,7 +151,7 @@ export default function Navbar({ isLoggedIn = false, onLogout }) {
             </div>
           )}
 
-          {/* Logged In User Menu */}
+          {/* Logged In User Menu - Desktop */}
           {isLoggedIn && (() => {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const getInitials = () => {

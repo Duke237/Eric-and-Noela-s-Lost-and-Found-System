@@ -137,20 +137,21 @@ export default function ReportLostItem() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
-      >
-        <div className="flex items-center gap-2 sm:gap-3 mb-2">
-          <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
-            <AlertCircle className="w-5 sm:w-6 h-5 sm:h-6 text-red-600" />
+    <div className="w-full h-full bg-gray-50">
+      <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
+              <AlertCircle className="w-5 sm:w-6 h-5 sm:h-6 text-red-600" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Report Lost Item</h1>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Report Lost Item</h1>
-        </div>
-        <p className="text-sm sm:text-base text-gray-600">Fill out the form below to report your lost item</p>
-      </motion.div>
+          <p className="text-sm sm:text-base text-gray-600">Fill out the form below to report your lost item</p>
+        </motion.div>
 
       <motion.form
         initial={{ opacity: 0, y: 20 }}
@@ -330,6 +331,7 @@ export default function ReportLostItem() {
           )}
         </motion.button>
       </motion.form>
+      </div>
     </div>
   );
 }

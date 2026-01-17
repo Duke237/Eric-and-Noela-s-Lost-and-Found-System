@@ -108,21 +108,22 @@ export default function DashboardHome() {
   const stats = getUserStats();
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Welcome Message */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 sm:p-8 rounded-xl shadow-lg"
-      >
-        <h1 className="text-2xl sm:text-4xl font-bold mb-2">{getWelcomeMessage()}</h1>
-        <p className="text-blue-100 text-sm sm:text-base">
-          {isNewUser 
-            ? "You're all set! Start reporting lost or found items to help your community."
-            : "Continue managing your lost and found reports."}
-        </p>
-      </motion.div>
+    <div className="w-full h-full bg-gray-50">
+      <div className="p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+        {/* Welcome Message */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 sm:p-8 rounded-xl shadow-lg"
+        >
+          <h1 className="text-2xl sm:text-4xl font-bold mb-2">{getWelcomeMessage()}</h1>
+          <p className="text-blue-100 text-sm sm:text-base">
+            {isNewUser 
+              ? "You're all set! Start reporting lost or found items to help your community."
+              : "Continue managing your lost and found reports."}
+          </p>
+        </motion.div>
 
       {/* Header */}
       <motion.div
@@ -350,6 +351,7 @@ export default function DashboardHome() {
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }
