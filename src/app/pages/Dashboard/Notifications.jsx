@@ -165,8 +165,6 @@ export default function Notifications() {
     return 'blue';
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
   if (isLoading) {
     return (
       <div className="w-full h-full bg-gray-50">
