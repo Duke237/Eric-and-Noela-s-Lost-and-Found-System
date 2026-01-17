@@ -79,6 +79,50 @@ export default function ReportLostItem() {
     setIsSubmitting(true);
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('token');
+      
+      // Try real API first
+      if (token) {
+        try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+          const response = await fetch(`${apiUrl}/items`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...formData,
+              type: 'lost',
+              userId: user.id || '1',
+              image: formData.image, // Send as string/base64
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setSubmitted(true);
+              setFormData({
+                itemName: '',
+                category: '',
+                description: '',
+                location: '',
+                date: '',
+                contactInfo: '',
+                image: null,
+              });
+              setImagePreview(null);
+              setIsSubmitting(false);
+              return;
+            }
+          }
+        } catch (apiError) {
+          console.log('Real API not available, falling back to mock:', apiError);
+        }
+      }
+
+      // Fallback to mock API
       const response = await itemsAPI.create({
         ...formData,
         type: 'lost',
@@ -100,6 +144,7 @@ export default function ReportLostItem() {
       }
     } catch (error) {
       console.error('Error submitting form:', error);
+      setErrors({ submit: 'Failed to submit form. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
