@@ -42,6 +42,8 @@ exports.create = async (req, res) => {
 
     const itemId = result.insertId;
 
+    console.log(`✅ New item created - ID: ${itemId}, Type: ${type}, Name: ${itemName}`);
+
     // Update user stats
     const statField = type === 'lost' ? 'lost_items' : 'found_items';
     await connection.query(
@@ -54,11 +56,13 @@ exports.create = async (req, res) => {
       'SELECT id FROM users'
     );
     
-    console.log(`📢 Broadcasting notification to ${allUsers.length} users for item ${itemId}`);
+    console.log(`📢 Broadcasting notification to ${allUsers.length} users for ${type} item: "${itemName}"`);
     
     const notificationMessage = `A ${type === 'lost' ? '🔍 Lost' : '✅ Found'} item has been reported: ${itemName} at ${location}`;
+    console.log(`📝 Notification message: ${notificationMessage}`);
     
     let notificationsCreated = 0;
+    let notificationsFailed = 0;
     for (const user of allUsers) {
       try {
         // Use INSERT IGNORE to prevent duplicate notifications for the same item per user
@@ -78,15 +82,18 @@ exports.create = async (req, res) => {
         );
         if (result.affectedRows > 0) {
           notificationsCreated++;
-          console.log(`✅ Notification created for user ${user.id}`);
+          console.log(`  ✅ User ${user.id}: Notification created`);
+        } else {
+          console.log(`  ℹ️ User ${user.id}: Notification already exists (ignored duplicate)`);
         }
       } catch (error) {
+        notificationsFailed++;
         // Log but don't fail if one notification fails
-        console.error(`❌ Error creating notification for user ${user.id}:`, error);
+        console.error(`  ❌ User ${user.id}: ${error.message}`);
       }
     }
     
-    console.log(`📊 Total notifications created: ${notificationsCreated}/${allUsers.length}`);
+    console.log(`📊 Notification Summary - Created: ${notificationsCreated}, Already existed: ${allUsers.length - notificationsCreated - notificationsFailed}, Failed: ${notificationsFailed}`);
 
     await connection.release();
 

@@ -158,13 +158,23 @@ export default function ReportLostItem() {
             return;
           } else {
             console.error('❌ Backend error:', data.message);
+            setErrors({ submit: data.message || 'Failed to report item' });
+            setIsSubmitting(false);
+            return;
           }
         } catch (apiError) {
           console.error('🔴 Real API error, falling back to mock:', apiError);
+          setErrors({ submit: 'API Error: ' + apiError.message });
+          setIsSubmitting(false);
         }
+      } else {
+        setErrors({ submit: 'No authentication token. Please log in again.' });
+        setIsSubmitting(false);
+        return;
       }
 
-      // Fallback to mock API
+      // Fallback to mock API only if token wasn't available or API call failed
+      console.log('📝 Using mock API for item submission...');
       const response = await itemsAPI.create({
         ...formData,
         type: 'lost',
@@ -172,6 +182,7 @@ export default function ReportLostItem() {
       });
 
       if (response.success) {
+        console.log('✅ Item submitted via mock API');
         setSubmitted(true);
         setFormData({
           itemName: '',
@@ -184,8 +195,9 @@ export default function ReportLostItem() {
         });
         setImagePreview(null);
       } else {
-        setErrors({ submit: 'Failed to submit form. Please try again.' });
+        setErrors({ submit: response.error || 'Failed to submit form. Please try again.' });
       }
+      setIsSubmitting(false);
     } catch (error) {
       console.error('Error submitting form:', error);
       setErrors({ submit: 'Error: ' + (error.message || 'Unknown error') });
