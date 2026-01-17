@@ -12,20 +12,61 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { notificationsAPI } from '@/services/api';
+import { notificationService } from '@/services/notificationService';
 
 export default function Sidebar({ isCollapsed, onToggleCollapse }) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     loadUnreadCount();
+
+    // Subscribe to real-time notification updates
+    const unsubscribe = notificationService.subscribe((newNotifications) => {
+      setUnreadCount(prev => prev + newNotifications.length);
+    });
+
+    // Listen to unread count changes from notification service
+    const checkUnread = setInterval(() => {
+      const count = notificationService.getUnreadCount();
+      if (count > 0) {
+        setUnreadCount(count);
+      }
+    }, 1000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(checkUnread);
+    };
   }, []);
 
   const loadUnreadCount = async () => {
     try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/notifications/unread`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setUnreadCount(data.count || 0);
+            return;
+          }
+        } catch (apiError) {
+          console.log('Real API not available, falling back to mock');
+        }
+      }
+
+      // Fallback to mock API
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const response = await notificationsAPI.getAll(user.id || '1');
       if (response.success) {
-        const unread = response.notifications.filter(n => !n.read).length;
+        const unread = response.notifications.filter(n => !n.read && !n.read_status).length;
         setUnreadCount(unread);
       }
     } catch (error) {

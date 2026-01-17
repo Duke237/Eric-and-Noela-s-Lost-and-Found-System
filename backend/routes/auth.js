@@ -77,10 +77,10 @@ exports.login = async (req, res) => {
 
     const connection = await pool.getConnection();
 
-    const [users] = await connection.query('SELECT id, email, password, name FROM users WHERE email = ?', [email]);
-    await connection.release();
-
+    const [users] = await connection.query('SELECT id, email, password, name, registered_at FROM users WHERE email = ?', [email]);
+    
     if (users.length === 0) {
+      await connection.release();
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
@@ -88,10 +88,19 @@ exports.login = async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
+      await connection.release();
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
+    // Update last login
+    await connection.query(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
+      [user.id]
+    );
+
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+    await connection.release();
 
     res.json({
       success: true,
@@ -100,6 +109,7 @@ exports.login = async (req, res) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        registered_at: user.registered_at,
       },
     });
   } catch (error) {

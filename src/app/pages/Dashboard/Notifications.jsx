@@ -1,23 +1,77 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Bell, CheckCircle, AlertCircle, MessageSquare, Trash2, CheckCheck, MapPin, Calendar, Tag, Image as ImageIcon } from 'lucide-react';
+import { Bell, CheckCircle, AlertCircle, MessageSquare, Trash2, CheckCheck, MapPin, Calendar, Tag, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { notificationsAPI } from '@/services/api';
+import { notificationService } from '@/services/notificationService';
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     loadNotifications();
+
+    // Subscribe to real-time notification updates
+    const unsubscribe = notificationService.subscribe((newNotifications) => {
+      console.log('Received real-time notifications:', newNotifications);
+      // Add new notifications to the top
+      setNotifications(prev => {
+        const updatedNotifications = [...newNotifications, ...prev];
+        // Remove duplicates by item_id
+        const uniqueNotifications = updatedNotifications.reduce((acc, current) => {
+          const x = acc.find(item => item.item_id === current.item_id);
+          if (!x) {
+            return [...acc, current];
+          } else {
+            return acc;
+          }
+        }, []);
+        return uniqueNotifications;
+      });
+    });
+
+    // Start polling for new notifications every 5 seconds
+    notificationService.startPolling(5000);
+
+    // Cleanup
+    return () => {
+      unsubscribe();
+      notificationService.stopPolling();
+    };
   }, []);
 
   const loadNotifications = async () => {
     setIsLoading(true);
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Try to fetch from real API first
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/notifications`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.notifications?.filter(n => !n.read_status).length || 0);
+          return;
+        }
+      } catch (apiError) {
+        console.log('Real API not available, falling back to mock data:', apiError);
+      }
+
+      // Fallback to mock API
       const response = await notificationsAPI.getAll(user.id || '1');
       if (response.success) {
         setNotifications(response.notifications);
+        setUnreadCount(response.notifications?.filter(n => !n.read).length || 0);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -26,17 +80,60 @@ export default function Notifications() {
     }
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadNotifications();
+    setIsRefreshing(false);
+  };
+
   const markAsRead = async (notificationId) => {
-    await notificationsAPI.markAsRead(notificationId);
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/notifications/mark-read`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ notificationId }),
+        });
+      } else {
+        await notificationsAPI.markAsRead(notificationId);
+      }
+    } catch (error) {
+      console.error('Error marking as read:', error);
+    }
+
     setNotifications(notifications.map(n =>
-      n.id === notificationId ? { ...n, read: true } : n
+      n.id === notificationId ? { ...n, read: true, read_status: true } : n
     ));
+    
+    const newUnreadCount = notifications.filter(n => n.id !== notificationId && !n.read).length;
+    setUnreadCount(newUnreadCount);
   };
 
   const markAllAsRead = async () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    await notificationsAPI.markAllAsRead(user.id || '1');
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/notifications/mark-all-read`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      } else {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        await notificationsAPI.markAllAsRead(user.id || '1');
+      }
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+
+    setNotifications(notifications.map(n => ({ ...n, read: true, read_status: true })));
+    setUnreadCount(0);
   };
 
   const deleteNotification = (notificationId) => {
@@ -72,45 +169,61 @@ export default function Notifications() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[600px]">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-full h-full bg-gray-50">
+        <div className="flex items-center justify-center min-h-[600px]">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-2">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="p-2 bg-yellow-100 rounded-lg flex-shrink-0">
-              <Bell className="w-5 sm:w-6 h-5 sm:h-6 text-yellow-600" />
+    <div className="w-full h-full bg-gray-50">
+      <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="p-2 bg-yellow-100 rounded-lg flex-shrink-0">
+                <Bell className="w-5 sm:w-6 h-5 sm:h-6 text-yellow-600" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Notifications</h1>
+              {unreadCount > 0 && (
+                <span className="px-2 sm:px-3 py-1 bg-red-500 text-white text-xs sm:text-sm font-semibold rounded-full flex-shrink-0">
+                  {unreadCount}
+                </span>
+              )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Notifications</h1>
-            {unreadCount > 0 && (
-              <span className="px-2 sm:px-3 py-1 bg-red-500 text-white text-xs sm:text-sm font-semibold rounded-full flex-shrink-0">
-                {unreadCount}
-              </span>
-            )}
+            <div className="flex gap-2">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </motion.button>
+              {unreadCount > 0 && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={markAllAsRead}
+                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                >
+                  <CheckCheck className="w-4 h-4" />
+                  <span className="hidden sm:inline">Mark all as read</span>
+                  <span className="sm:hidden">Read</span>
+                </motion.button>
+              )}
+            </div>
           </div>
-          {unreadCount > 0 && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={markAllAsRead}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
-            >
-              <CheckCheck className="w-4 h-4" />
-              Mark all as read
-            </motion.button>
-          )}
-        </div>
-        <p className="text-sm sm:text-base text-gray-600">Stay updated with your lost and found activities</p>
-      </motion.div>
+          <p className="text-sm sm:text-base text-gray-600">Stay updated with your lost and found activities</p>
+        </motion.div>
 
       {notifications.length === 0 ? (
         <motion.div
@@ -219,6 +332,7 @@ export default function Notifications() {
           })}
         </div>
       )}
+        </div>
     </div>
   );
 }

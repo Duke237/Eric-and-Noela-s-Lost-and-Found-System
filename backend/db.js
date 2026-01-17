@@ -39,6 +39,8 @@ const initializeDatabase = async () => {
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
+        registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -75,7 +77,9 @@ const initializeDatabase = async () => {
         image LONGBLOB,
         message TEXT,
         read_status BOOLEAN DEFAULT FALSE,
+        is_viewed BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_user_item (user_id, item_id),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);

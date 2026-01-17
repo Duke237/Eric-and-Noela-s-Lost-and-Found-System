@@ -30,7 +30,9 @@ app.get('/api/items/user', verifyToken, itemsRoutes.getByUserId);
 app.post('/api/items/resolve', verifyToken, itemsRoutes.markAsResolved);
 
 app.get('/api/notifications', verifyToken, notificationsRoutes.getAll);
-app.post('/api/notifications/read', verifyToken, notificationsRoutes.markAsRead);
+app.get('/api/notifications/unread', verifyToken, notificationsRoutes.getUnread);
+app.post('/api/notifications/mark-read', verifyToken, notificationsRoutes.markAsRead);
+app.post('/api/notifications/mark-all-read', verifyToken, notificationsRoutes.markAllAsRead);
 
 app.get('/api/user-stats', verifyToken, userStatsRoutes.get);
 

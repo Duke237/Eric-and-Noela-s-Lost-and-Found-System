@@ -49,24 +49,37 @@ exports.create = async (req, res) => {
       [userId]
     );
 
-    // Broadcast notification to all users
-    const [allUsers] = await connection.query('SELECT id FROM users');
+    // Broadcast notification to all users registered BEFORE this item was created
+    // This ensures only existing users get notified, not future registrants
+    const now = new Date();
+    const [allUsers] = await connection.query(
+      'SELECT id FROM users WHERE registered_at < ?',
+      [now]
+    );
+    
+    const notificationMessage = `A ${type === 'lost' ? '🔍 Lost' : '✅ Found'} item has been reported: ${itemName} at ${location}`;
     
     for (const user of allUsers) {
-      await connection.query(
-        `INSERT INTO notifications (user_id, item_id, item_name, location, type, date, image, message, read_status) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, FALSE)`,
-        [
-          user.id,
-          itemId,
-          itemName,
-          location,
-          type,
-          date,
-          image ? Buffer.from(image, 'base64') : null,
-          `A ${type} item has been reported: ${itemName} at ${location}`
-        ]
-      );
+      try {
+        // Use INSERT IGNORE to prevent duplicate notifications for the same item per user
+        await connection.query(
+          `INSERT IGNORE INTO notifications (user_id, item_id, item_name, location, type, date, image, message, read_status, is_viewed) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, FALSE, FALSE)`,
+          [
+            user.id,
+            itemId,
+            itemName,
+            location,
+            type,
+            date,
+            image ? Buffer.from(image, 'base64') : null,
+            notificationMessage
+          ]
+        );
+      } catch (error) {
+        // Log but don't fail if one notification fails
+        console.error(`Error creating notification for user ${user.id}:`, error);
+      }
     }
 
     await connection.release();
@@ -74,7 +87,8 @@ exports.create = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Item reported successfully',
-      item: { id: itemId, type, category, itemName, location, date }
+      item: { id: itemId, type, category, itemName, location, date },
+      notificationsSent: allUsers.length
     });
   } catch (error) {
     console.error('Create item error:', error);

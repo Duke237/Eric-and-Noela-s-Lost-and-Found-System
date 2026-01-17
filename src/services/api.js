@@ -8,6 +8,21 @@ import SmartNotificationManager from './smartNotifications.js';
 
 const MOCK_DELAY = 800; // Simulate network delay
 
+// API Base URL and Auth helpers
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+export const getAuthToken = () => {
+  return localStorage.getItem('token');
+};
+
+export const setAuthToken = (token) => {
+  if (token) {
+    localStorage.setItem('token', token);
+  } else {
+    localStorage.removeItem('token');
+  }
+};
+
 // Helper to get/set data from localStorage
 const getStorageData = (key, defaultValue = []) => {
   try {
