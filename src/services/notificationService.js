@@ -166,35 +166,41 @@ class NotificationService {
     }
 
     this.isPolling = true;
-    let lastFetchTime = Date.now();
+    let lastNotificationCount = 0;
+    let seenNotificationIds = new Set();
 
     const poll = async () => {
       try {
         const data = await this.fetchUnread();
-        if (data.success && data.notifications && data.notifications.length > 0) {
-          // Only notify if notifications are newer than last fetch
-          const newNotifications = data.notifications.filter(
-            n => new Date(n.created_at).getTime() > lastFetchTime
-          );
-
+        if (data.success && data.notifications) {
+          console.log(`📬 Polled: Found ${data.notifications.length} unread notifications (previous count: ${lastNotificationCount})`);
+          
+          // Track new notifications by ID
+          const newNotifications = data.notifications.filter(n => !seenNotificationIds.has(n.id));
+          
           if (newNotifications.length > 0) {
+            console.log(`🔔 New notifications detected: ${newNotifications.length}`);
+            newNotifications.forEach(n => seenNotificationIds.add(n.id));
+            this.unreadCount = data.count || data.notifications.length;
             this.notifySubscribers(newNotifications);
           }
-
-          lastFetchTime = Date.now();
+          
+          // Update count
+          lastNotificationCount = data.notifications.length;
         }
       } catch (error) {
-        console.error('Polling error:', error);
+        console.error('❌ Polling error:', error);
       }
     };
 
     // Initial poll
+    console.log('🔄 Starting notification polling...');
     poll();
 
     // Set up interval
     this.pollInterval = setInterval(poll, intervalMs);
 
-    console.log('Notification polling started');
+    console.log(`✅ Notification polling started (interval: ${intervalMs}ms)`);
   }
 
   /**

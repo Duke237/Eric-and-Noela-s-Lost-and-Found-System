@@ -82,6 +82,8 @@ export default function ReportFoundItem() {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const token = localStorage.getItem('token');
       
+      console.log('📝 Submitting found item report...', { userId: user.id, hasToken: !!token });
+      
       // Try real API first
       if (token) {
         try {
@@ -115,6 +117,7 @@ export default function ReportFoundItem() {
             }
           }
 
+          console.log('📤 Sending to backend:', apiUrl);
           const response = await fetch(`${apiUrl}/items`, {
             method: 'POST',
             headers: {
@@ -127,6 +130,7 @@ export default function ReportFoundItem() {
           const data = await response.json();
           
           if (data.success) {
+            console.log('✅ Item reported successfully! Notifications sent to:', data.notificationsSent);
             setSubmitted(true);
             setFormData({
               itemName: '',
@@ -140,9 +144,11 @@ export default function ReportFoundItem() {
             setImagePreview(null);
             setIsSubmitting(false);
             return;
+          } else {
+            console.error('❌ Backend error:', data.message);
           }
         } catch (apiError) {
-          console.log('Real API error, falling back to mock:', apiError);
+          console.error('🔴 Real API error, falling back to mock:', apiError);
         }
       }
 

@@ -54,12 +54,15 @@ exports.create = async (req, res) => {
       'SELECT id FROM users'
     );
     
+    console.log(`📢 Broadcasting notification to ${allUsers.length} users for item ${itemId}`);
+    
     const notificationMessage = `A ${type === 'lost' ? '🔍 Lost' : '✅ Found'} item has been reported: ${itemName} at ${location}`;
     
+    let notificationsCreated = 0;
     for (const user of allUsers) {
       try {
         // Use INSERT IGNORE to prevent duplicate notifications for the same item per user
-        await connection.query(
+        const [result] = await connection.query(
           `INSERT IGNORE INTO notifications (user_id, item_id, item_name, location, type, date, image, message, read_status, is_viewed) 
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, FALSE, FALSE)`,
           [
@@ -73,11 +76,17 @@ exports.create = async (req, res) => {
             notificationMessage
           ]
         );
+        if (result.affectedRows > 0) {
+          notificationsCreated++;
+          console.log(`✅ Notification created for user ${user.id}`);
+        }
       } catch (error) {
         // Log but don't fail if one notification fails
-        console.error(`Error creating notification for user ${user.id}:`, error);
+        console.error(`❌ Error creating notification for user ${user.id}:`, error);
       }
     }
+    
+    console.log(`📊 Total notifications created: ${notificationsCreated}/${allUsers.length}`);
 
     await connection.release();
 

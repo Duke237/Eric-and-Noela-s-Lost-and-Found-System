@@ -36,6 +36,56 @@ app.post('/api/notifications/mark-all-read', verifyToken, notificationsRoutes.ma
 
 app.get('/api/user-stats', verifyToken, userStatsRoutes.get);
 
+// Debug endpoints
+app.get('/api/debug/notifications/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { pool } = require('./db');
+    const connection = await pool.getConnection();
+    
+    const [notifications] = await connection.query(
+      'SELECT id, user_id, item_id, item_name, message, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC',
+      [userId]
+    );
+    
+    const [users] = await connection.query('SELECT COUNT(*) as count FROM users');
+    const [allNotifs] = await connection.query('SELECT COUNT(*) as count FROM notifications');
+    
+    await connection.release();
+    
+    res.json({
+      debug: {
+        totalUsers: users[0].count,
+        totalNotifications: allNotifs[0].count,
+        userNotifications: notifications.length,
+        notifications: notifications
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/debug/users', async (req, res) => {
+  try {
+    const { pool } = require('./db');
+    const connection = await pool.getConnection();
+    
+    const [users] = await connection.query('SELECT id, email, name, registered_at FROM users');
+    
+    await connection.release();
+    
+    res.json({
+      debug: {
+        totalUsers: users.length,
+        users: users
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Backend is running' });
