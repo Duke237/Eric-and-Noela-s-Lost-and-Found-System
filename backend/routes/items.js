@@ -1,4 +1,5 @@
 const { pool } = require('../db');
+const AIMatchingService = require('../services/aiMatchingService');
 
 exports.getAll = async (req, res) => {
   try {
@@ -96,6 +97,31 @@ exports.create = async (req, res) => {
     console.log(`📊 Notification Summary - Created: ${notificationsCreated}, Already existed: ${allUsers.length - notificationsCreated - notificationsFailed}, Failed: ${notificationsFailed}`);
 
     await connection.release();
+
+    // ============================================
+    // 🤖 TRIGGER AI MATCHING ENGINE
+    // ============================================
+    // Run the AI matching service asynchronously (don't wait for it)
+    // This will check if the new item matches any existing items
+    // and create smart notifications for potential matches
+    console.log(`\n🚀 Triggering AI Matching Engine...`);
+    
+    const newItemForAI = {
+      id: itemId,
+      type,
+      category,
+      item_name: itemName,
+      description: description || '',
+      location,
+      date,
+      user_id: userId,
+      image: image
+    };
+    
+    // Run matching asynchronously without blocking the response
+    AIMatchingService.processNewItem(newItemForAI).catch(error => {
+      console.error('⚠️ AI Matching service error (non-blocking):', error.message);
+    });
 
     res.status(201).json({
       success: true,
