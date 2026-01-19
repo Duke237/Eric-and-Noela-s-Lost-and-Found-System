@@ -126,7 +126,14 @@ export default function ReportFoundItem() {
             body: JSON.stringify(payload),
           });
 
+          console.log('Response status:', response.status, response.statusText);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
           const data = await response.json();
+          console.log('Response data:', data);
           
           if (data.success) {
             console.log('✅ Item reported successfully! Notifications sent to:', data.notificationsSent);
@@ -161,41 +168,16 @@ export default function ReportFoundItem() {
             return;
           }
         } catch (apiError) {
-          console.error('🔴 Real API error, falling back to mock:', apiError);
-          setErrors({ submit: 'API Error: ' + apiError.message });
+          console.error('🔴 API error:', apiError);
+          setErrors({ submit: 'Error: ' + apiError.message });
           setIsSubmitting(false);
         }
       } else {
+        console.error('❌ No authentication token');
         setErrors({ submit: 'No authentication token. Please log in again.' });
         setIsSubmitting(false);
         return;
       }
-
-      // Fallback to mock API only if token wasn't available or API call failed
-      console.log('📝 Using mock API for item submission...');
-      const response = await itemsAPI.create({
-        ...formData,
-        type: 'found',
-        userId: user.id || '1',
-      });
-
-      if (response.success) {
-        console.log('✅ Item submitted via mock API');
-        setSubmitted(true);
-        setFormData({
-          itemName: '',
-          category: '',
-          description: '',
-          location: '',
-          date: '',
-          contactInfo: '',
-          image: null,
-        });
-        setImagePreview(null);
-      } else {
-        setErrors({ submit: response.error || 'Failed to submit form. Please try again.' });
-      }
-      setIsSubmitting(false);
     } catch (error) {
       console.error('Error submitting form:', error);
       setErrors({ submit: 'Error: ' + (error.message || 'Unknown error') });

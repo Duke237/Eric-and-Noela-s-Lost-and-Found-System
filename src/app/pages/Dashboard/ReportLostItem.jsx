@@ -85,105 +85,69 @@ export default function ReportLostItem() {
       
       console.log('📝 Submitting lost item report...', { userId: user.id, hasToken: !!token });
       
-      // Try real API first
-      if (token) {
-        try {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-          
-          // Prepare JSON payload with image as base64
-          const payload = {
-            itemName: formData.itemName,
-            category: formData.category,
-            description: formData.description,
-            location: formData.location,
-            date: formData.date,
-            contactInfo: formData.contactInfo,
-            type: 'lost',
-            userId: user.id || '1',
-          };
-
-          // Handle image
-          if (formData.image) {
-            if (formData.image instanceof File) {
-              // Convert File to base64
-              const base64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(formData.image);
-              });
-              payload.image = base64;
-            } else if (typeof formData.image === 'string') {
-              payload.image = formData.image;
-            }
-          }
-
-          console.log('📤 Sending to backend:', apiUrl);
-          const response = await fetch(`${apiUrl}/items`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
-
-          const data = await response.json();
-          
-          if (data.success) {
-            console.log('✅ Item reported successfully! Notifications sent to:', data.notificationsSent);
-            
-            // Immediately fetch notifications to update the UI
-            console.log('🔄 Fetching notifications immediately...');
-            setTimeout(async () => {
-              const notifData = await notificationService.fetchUnread();
-              if (notifData.success) {
-                console.log(`📬 Fetched ${notifData.count} unread notifications`);
-                notificationService.notifySubscribers(notifData.notifications || []);
-              }
-            }, 500);
-            
-            setSubmitted(true);
-            setFormData({
-              itemName: '',
-              category: '',
-              description: '',
-              location: '',
-              date: '',
-              contactInfo: '',
-              image: null,
-            });
-            setImagePreview(null);
-            setIsSubmitting(false);
-            return;
-          } else {
-            console.error('❌ Backend error:', data.message);
-            setErrors({ submit: data.message || 'Failed to report item' });
-            setIsSubmitting(false);
-            return;
-          }
-        } catch (apiError) {
-          console.error('🔴 Real API error, falling back to mock:', apiError);
-          setErrors({ submit: 'API Error: ' + apiError.message });
-          setIsSubmitting(false);
-        }
-      } else {
+      if (!token) {
+        console.error('❌ No authentication token');
         setErrors({ submit: 'No authentication token. Please log in again.' });
         setIsSubmitting(false);
         return;
       }
-
-      // Fallback to mock API only if token wasn't available or API call failed
-      console.log('📝 Using mock API for item submission...');
-      const response = await itemsAPI.create({
-        ...formData,
+      
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      
+      // Prepare JSON payload with image as base64
+      const payload = {
+        itemName: formData.itemName,
+        category: formData.category,
+        description: formData.description,
+        location: formData.location,
+        date: formData.date,
+        contactInfo: formData.contactInfo,
         type: 'lost',
         userId: user.id || '1',
+      };
+
+      // Handle image
+      if (formData.image) {
+        if (formData.image instanceof File) {
+          // Convert File to base64
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(formData.image);
+          });
+          payload.image = base64;
+        } else if (typeof formData.image === 'string') {
+          payload.image = formData.image;
+        }
+      }
+
+      console.log('📤 Sending to backend:', apiUrl);
+      const response = await fetch(`${apiUrl}/items`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
 
-      if (response.success) {
-        console.log('✅ Item submitted via mock API');
+      console.log('Response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('HTTP Error:', response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Response data:', data);
+      
+      if (data.success) {
+        console.log('✅ Item reported successfully! Notifications sent to:', data.notificationsSent);
         setSubmitted(true);
+        
+        // Reset form
         setFormData({
           itemName: '',
           category: '',
@@ -194,10 +158,20 @@ export default function ReportLostItem() {
           image: null,
         });
         setImagePreview(null);
+        setErrors({});
+        
+        // Fetch notifications after a short delay
+        setTimeout(async () => {
+          const notifData = await notificationService.fetchUnread();
+          if (notifData.success) {
+            console.log(`📬 Fetched ${notifData.count} unread notifications`);
+            notificationService.notifySubscribers(notifData.notifications || []);
+          }
+        }, 1000);
       } else {
-        setErrors({ submit: response.error || 'Failed to submit form. Please try again.' });
+        console.error('❌ Backend error:', data.message);
+        setErrors({ submit: data.message || 'Failed to report item' });
       }
-      setIsSubmitting(false);
     } catch (error) {
       console.error('Error submitting form:', error);
       setErrors({ submit: 'Error: ' + (error.message || 'Unknown error') });
