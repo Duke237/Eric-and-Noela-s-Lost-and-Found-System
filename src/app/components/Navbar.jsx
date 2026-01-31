@@ -99,14 +99,13 @@ export default function Navbar({ isLoggedIn = false, onLogout }) {
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 cursor-pointer"
+              className="flex items-center cursor-pointer"
             >
-              <div className="w-8 sm:w-10 h-8 sm:h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <SearchIcon className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
-              </div>
-              <span className="hidden xs:inline font-bold text-lg sm:text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap">
-                Lost & Found
-              </span>
+              <img 
+                src="/images/logo.png" 
+                alt="Lost & Found Logo" 
+                className="h-10 w-auto"
+              />
             </motion.div>
           </Link>
 

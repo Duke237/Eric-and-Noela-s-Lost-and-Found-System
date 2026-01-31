@@ -27,6 +27,7 @@ app.post('/api/auth/login', authRoutes.login);
 app.get('/api/items', itemsRoutes.getAll);
 app.post('/api/items', verifyToken, itemsRoutes.create);
 app.get('/api/items/user', verifyToken, itemsRoutes.getByUserId);
+app.delete('/api/items/:id', verifyToken, itemsRoutes.delete);
 app.post('/api/items/resolve', verifyToken, itemsRoutes.markAsResolved);
 
 app.get('/api/notifications', verifyToken, notificationsRoutes.getAll);

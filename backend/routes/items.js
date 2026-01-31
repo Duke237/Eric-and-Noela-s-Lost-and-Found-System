@@ -182,3 +182,27 @@ exports.markAsResolved = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.delete = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    const connection = await pool.getConnection();
+
+    // Verify ownership
+    const [items] = await connection.query('SELECT user_id FROM items WHERE id = ?', [id]);
+    if (items.length === 0 || items[0].user_id !== userId) {
+      await connection.release();
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    await connection.query('DELETE FROM items WHERE id = ?', [id]);
+    await connection.release();
+
+    res.json({ success: true, message: 'Item deleted successfully' });
+  } catch (error) {
+    console.error('Delete item error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

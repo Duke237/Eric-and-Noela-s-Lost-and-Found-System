@@ -258,6 +258,21 @@ export const authAPI = {
 // Items API
 export const itemsAPI = {
   getAll: async () => {
+    try {
+      const token = getAuthToken();
+      if (token) {
+        const response = await fetch(`${API_BASE_URL}/items`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          return await response.json();
+        }
+      }
+    } catch (error) {
+      console.warn('Backend getAll failed, using mock data:', error.message);
+    }
+    
+    // Fallback to mock
     await delay(MOCK_DELAY);
     return {
       success: true,
@@ -266,17 +281,56 @@ export const itemsAPI = {
   },
 
   getById: async (id) => {
+    try {
+      const token = getAuthToken();
+      if (token) {
+        const response = await fetch(`${API_BASE_URL}/items/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          return await response.json();
+        }
+      }
+    } catch (error) {
+      console.warn('Backend getById failed, using mock data:', error.message);
+    }
+    
+    // Fallback to mock
     await delay(MOCK_DELAY);
     const item = mockItems.find(i => i.id === id);
-    
     if (item) {
       return { success: true, item };
     }
-    
     return { success: false, error: 'Item not found' };
   },
 
   getUserItems: async (userId) => {
+    try {
+      const token = getAuthToken();
+      if (token) {
+        const response = await fetch(`${API_BASE_URL}/items/user`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Convert snake_case from backend to camelCase for frontend
+          if (data.items) {
+            data.items = data.items.map(item => ({
+              ...item,
+              itemName: item.item_name || item.itemName,
+              contactInfo: item.contact_info || item.contactInfo,
+              createdAt: item.created_at || item.createdAt,
+              userId: item.user_id || item.userId,
+            }));
+          }
+          return data;
+        }
+      }
+    } catch (error) {
+      console.warn('Backend getUserItems failed, using mock data:', error.message);
+    }
+    
+    // Fallback to mock
     await delay(MOCK_DELAY);
     const userItems = mockItems.filter(i => i.userId === userId);
     return {
@@ -286,12 +340,59 @@ export const itemsAPI = {
   },
 
   create: async (itemData) => {
-    await delay(MOCK_DELAY);
+    const token = getAuthToken();
+    if (token) {
+      try {
+        // Prepare payload for backend
+        let imageData = null;
+        if (itemData.image instanceof File) {
+          imageData = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(itemData.image);
+          });
+        } else if (typeof itemData.image === 'string') {
+          imageData = itemData.image;
+        }
+        
+        const payload = {
+          type: itemData.type,
+          category: itemData.category,
+          itemName: itemData.itemName,
+          description: itemData.description,
+          location: itemData.location,
+          date: itemData.date,
+          contactInfo: itemData.contactInfo,
+          userId: itemData.userId,
+          image: imageData,
+        };
+        
+        const response = await fetch(`${API_BASE_URL}/items`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          return data;
+        } else {
+          const errorData = await response.json();
+          return { success: false, message: errorData.message || 'Failed to create item' };
+        }
+      } catch (error) {
+        console.error('Backend create failed:', error.message);
+        return { success: false, message: 'Error: ' + error.message };
+      }
+    }
     
-    // Get image data if provided
+    // Fallback to mock if no token
+    await delay(MOCK_DELAY);
     let imageData = null;
     if (itemData.image instanceof File) {
-      // Convert image file to base64 for storage
       imageData = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result);
@@ -328,36 +429,6 @@ export const itemsAPI = {
       localStorage.setItem(`userStats_${itemData.userId}`, JSON.stringify(userStats));
     }
     
-    // Create notifications for all users except the one who reported
-    const notificationTitle = itemData.type === 'lost' 
-      ? `Lost Item Report: ${itemData.itemName}` 
-      : `Found Item Report: ${itemData.itemName}`;
-    
-    const notificationMessage = itemData.type === 'lost'
-      ? `${itemData.itemName} was lost on ${itemData.date} at ${itemData.location}. Category: ${itemData.category}. Contact: ${itemData.contactInfo}`
-      : `${itemData.itemName} was found on ${itemData.date} at ${itemData.location}. Category: ${itemData.category}. Contact: ${itemData.contactInfo}`;
-    
-    // Create notification for all users
-    mockUsers.forEach(user => {
-      const notificationId = String(mockNotifications.length + 1);
-      mockNotifications.push({
-        id: notificationId,
-        userId: user.id,
-        title: notificationTitle,
-        message: notificationMessage,
-        type: itemData.type === 'lost' ? 'lost' : 'found',
-        itemId: newItem.id,
-        itemType: itemData.type,
-        itemName: itemData.itemName,
-        itemLocation: itemData.location,
-        itemDate: itemData.date,
-        itemImage: imageData,
-        reportedBy: itemData.userId,
-        read: false,
-        createdAt: new Date().toISOString(),
-      });
-    });
-    
     saveMockData();
     
     return {
@@ -367,37 +438,66 @@ export const itemsAPI = {
   },
 
   update: async (id, itemData) => {
+    try {
+      const token = getAuthToken();
+      if (token) {
+        const response = await fetch(`${API_BASE_URL}/items/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(itemData),
+        });
+        if (response.ok) {
+          return await response.json();
+        }
+      }
+    } catch (error) {
+      console.warn('Backend update failed, using mock data:', error.message);
+    }
+    
+    // Fallback to mock
     await delay(MOCK_DELAY);
-    
     const index = mockItems.findIndex(i => i.id === id);
-    
     if (index !== -1) {
       mockItems[index] = {
         ...mockItems[index],
         ...itemData,
       };
       saveMockData();
-      
       return {
         success: true,
         item: mockItems[index],
       };
     }
-    
     return { success: false, error: 'Item not found' };
   },
 
   delete: async (id) => {
+    try {
+      const token = getAuthToken();
+      if (token) {
+        const response = await fetch(`${API_BASE_URL}/items/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          return await response.json();
+        }
+      }
+    } catch (error) {
+      console.warn('Backend delete failed, using mock data:', error.message);
+    }
+    
+    // Fallback to mock
     await delay(MOCK_DELAY);
-    
     const index = mockItems.findIndex(i => i.id === id);
-    
     if (index !== -1) {
       mockItems.splice(index, 1);
       saveMockData();
       return { success: true };
     }
-    
     return { success: false, error: 'Item not found' };
   },
 };

@@ -115,13 +115,11 @@ export default function DashboardHome() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 sm:p-8 rounded-xl shadow-lg"
+          className="bg-blue-600 text-white p-6 sm:p-8 rounded-xl shadow-lg"
         >
-          <h1 className="text-2xl sm:text-4xl font-bold mb-2">{getWelcomeMessage()}</h1>
+          <h1 className="text-2xl sm:text-4xl font-bold mb-2">Welcome {JSON.parse(localStorage.getItem('user') || '{}').name?.split(' ')[0] || 'User'}</h1>
           <p className="text-blue-100 text-sm sm:text-base">
-            {isNewUser 
-              ? "You're all set! Start reporting lost or found items to help your community."
-              : "Continue managing your lost and found reports."}
+            Let's help you find it. Report lost or found items, for use to conyinue thank you
           </p>
         </motion.div>
 
