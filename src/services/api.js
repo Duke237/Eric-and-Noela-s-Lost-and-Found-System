@@ -330,8 +330,9 @@ export const itemsAPI = {
       console.warn('Backend getUserItems failed, using mock data:', error.message);
     }
     
-    // Fallback to mock
+    // Fallback to mock - reload from localStorage first
     await delay(MOCK_DELAY);
+    mockItems = getStorageData('items', mockItems);
     const userItems = mockItems.filter(i => i.userId === userId);
     return {
       success: true,
@@ -379,17 +380,13 @@ export const itemsAPI = {
         if (response.ok) {
           const data = await response.json();
           return data;
-        } else {
-          const errorData = await response.json();
-          return { success: false, message: errorData.message || 'Failed to create item' };
         }
       } catch (error) {
-        console.error('Backend create failed:', error.message);
-        return { success: false, message: 'Error: ' + error.message };
+        console.warn('Backend create failed, falling back to mock:', error.message);
       }
     }
     
-    // Fallback to mock if no token
+    // Fallback to mock data - ALWAYS use this when backend fails or no token
     await delay(MOCK_DELAY);
     let imageData = null;
     if (itemData.image instanceof File) {
@@ -398,6 +395,8 @@ export const itemsAPI = {
         reader.onloadend = () => resolve(reader.result);
         reader.readAsDataURL(itemData.image);
       });
+    } else if (typeof itemData.image === 'string') {
+      imageData = itemData.image;
     }
     
     const newItem = {
@@ -416,19 +415,6 @@ export const itemsAPI = {
     };
     
     mockItems.push(newItem);
-    
-    // Update user stats
-    if (itemData.userId) {
-      const userStats = JSON.parse(localStorage.getItem(`userStats_${itemData.userId}`) || '{}');
-      if (itemData.type === 'lost') {
-        userStats.lostItems = (userStats.lostItems || 0) + 1;
-      } else if (itemData.type === 'found') {
-        userStats.foundItems = (userStats.foundItems || 0) + 1;
-      }
-      userStats.isInitialized = true;
-      localStorage.setItem(`userStats_${itemData.userId}`, JSON.stringify(userStats));
-    }
-    
     saveMockData();
     
     return {
