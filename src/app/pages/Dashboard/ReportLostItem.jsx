@@ -81,21 +81,11 @@ export default function ReportLostItem() {
     
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const token = localStorage.getItem('token');
       
-      console.log('📝 Submitting lost item report...', { userId: user.id, hasToken: !!token });
+      console.log('📝 Submitting lost item report...', { userId: user.id });
       
-      if (!token) {
-        console.error('❌ No authentication token');
-        setErrors({ submit: 'No authentication token. Please log in again.' });
-        setIsSubmitting(false);
-        return;
-      }
-      
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      
-      // Prepare JSON payload with image as base64
-      const payload = {
+      // Use itemsAPI which handles both backend and mock data with fallback
+      const result = await itemsAPI.create({
         itemName: formData.itemName,
         category: formData.category,
         description: formData.description,
@@ -104,47 +94,13 @@ export default function ReportLostItem() {
         contactInfo: formData.contactInfo,
         type: 'lost',
         userId: user.id || '1',
-      };
-
-      // Handle image
-      if (formData.image) {
-        if (formData.image instanceof File) {
-          // Convert File to base64
-          const base64 = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(formData.image);
-          });
-          payload.image = base64;
-        } else if (typeof formData.image === 'string') {
-          payload.image = formData.image;
-        }
-      }
-
-      console.log('📤 Sending to backend:', apiUrl);
-      const response = await fetch(`${apiUrl}/items`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+        image: formData.image,
       });
 
-      console.log('Response status:', response.status, response.statusText);
+      console.log('✅ Response data:', result);
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('HTTP Error:', response.status, errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ Response data:', data);
-      
-      if (data.success) {
-        console.log('✅ Item reported successfully! Notifications sent to:', data.notificationsSent);
+      if (result.success) {
+        console.log('✅ Item reported successfully!');
         setSubmitted(true);
         
         // Reset form
@@ -169,8 +125,8 @@ export default function ReportLostItem() {
           }
         }, 1000);
       } else {
-        console.error('❌ Backend error:', data.message);
-        setErrors({ submit: data.message || 'Failed to report item' });
+        console.error('❌ Error:', result.message);
+        setErrors({ submit: result.message || 'Failed to report item' });
       }
     } catch (error) {
       console.error('Error submitting form:', error);

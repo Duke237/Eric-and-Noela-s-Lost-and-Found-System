@@ -79,104 +79,52 @@ export default function ReportFoundItem() {
     
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const token = localStorage.getItem('token');
       
-      console.log('📝 Submitting found item report...', { userId: user.id, hasToken: !!token });
+      console.log('📝 Submitting found item report...', { userId: user.id });
       
-      // Try real API first
-      if (token) {
-        try {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-          
-          // Prepare JSON payload with image as base64
-          const payload = {
-            itemName: formData.itemName,
-            category: formData.category,
-            description: formData.description,
-            location: formData.location,
-            date: formData.date,
-            contactInfo: formData.contactInfo,
-            type: 'found',
-            userId: user.id || '1',
-          };
+      // Use itemsAPI which handles both backend and mock data with fallback
+      const result = await itemsAPI.create({
+        itemName: formData.itemName,
+        category: formData.category,
+        description: formData.description,
+        location: formData.location,
+        date: formData.date,
+        contactInfo: formData.contactInfo,
+        type: 'found',
+        userId: user.id || '1',
+        image: formData.image,
+      });
 
-          // Handle image
-          if (formData.image) {
-            if (formData.image instanceof File) {
-              // Convert File to base64
-              const base64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(formData.image);
-              });
-              payload.image = base64;
-            } else if (typeof formData.image === 'string') {
-              payload.image = formData.image;
-            }
+      console.log('✅ Response data:', result);
+      
+      if (result.success) {
+        console.log('✅ Item reported successfully!');
+        
+        // Immediately fetch notifications to update the UI
+        console.log('🔄 Fetching notifications immediately...');
+        setTimeout(async () => {
+          const notifData = await notificationService.fetchUnread();
+          if (notifData.success) {
+            console.log(`📬 Fetched ${notifData.count} unread notifications`);
+            notificationService.notifySubscribers(notifData.notifications || []);
           }
-
-          console.log('📤 Sending to backend:', apiUrl);
-          const response = await fetch(`${apiUrl}/items`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
-
-          console.log('Response status:', response.status, response.statusText);
-          
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          console.log('Response data:', data);
-          
-          if (data.success) {
-            console.log('✅ Item reported successfully! Notifications sent to:', data.notificationsSent);
-            
-            // Immediately fetch notifications to update the UI
-            console.log('🔄 Fetching notifications immediately...');
-            setTimeout(async () => {
-              const notifData = await notificationService.fetchUnread();
-              if (notifData.success) {
-                console.log(`📬 Fetched ${notifData.count} unread notifications`);
-                notificationService.notifySubscribers(notifData.notifications || []);
-              }
-            }, 500);
-            
-            setSubmitted(true);
-            setFormData({
-              itemName: '',
-              category: '',
-              description: '',
-              location: '',
-              date: '',
-              contactInfo: '',
-              image: null,
-            });
-            setImagePreview(null);
-            setIsSubmitting(false);
-            return;
-          } else {
-            console.error('❌ Backend error:', data.message);
-            setErrors({ submit: data.message || 'Failed to report item' });
-            setIsSubmitting(false);
-            return;
-          }
-        } catch (apiError) {
-          console.error('🔴 API error:', apiError);
-          setErrors({ submit: 'Error: ' + apiError.message });
-          setIsSubmitting(false);
-        }
+        }, 500);
+        
+        setSubmitted(true);
+        setFormData({
+          itemName: '',
+          category: '',
+          description: '',
+          location: '',
+          date: '',
+          contactInfo: '',
+          image: null,
+        });
+        setImagePreview(null);
+        setErrors({});
       } else {
-        console.error('❌ No authentication token');
-        setErrors({ submit: 'No authentication token. Please log in again.' });
-        setIsSubmitting(false);
-        return;
+        console.error('❌ Error:', result.message);
+        setErrors({ submit: result.message || 'Failed to report item' });
       }
     } catch (error) {
       console.error('Error submitting form:', error);
